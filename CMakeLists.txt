@@ -8,6 +8,7 @@ target_sources(pomo_cli
   PRIVATE
   main.cpp
 )
+target_link_libraries(pomo_cli PRIVATE ncurses)
 #Libraries
 # add_library(circuit_network)
 # target_sources(circuit_network
