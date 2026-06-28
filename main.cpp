@@ -100,13 +100,16 @@ public:
       : win(w1), py(sy), px(sx), sx(sx), sy(sy) {}
   void int_printer(unsigned int x) {
     std::vector<int> val;
-    if (x == 0)
+    if (x == 0) {
       val.push_back(0);
-    else {
+      val.push_back(0);
+    } else {
       while (x > 0) {
         val.push_back(x % 10);
         x /= 10;
       }
+      if (val.size() < 2)
+        val.push_back(0);
     }
     for (auto itr = val.rbegin(); itr != val.rend(); itr++) {
       int digit = *itr;
@@ -154,7 +157,8 @@ public:
     mvwprintw(win, py + 1, px, " █ ");
     mvwprintw(win, py + 2, px, "   ");
     mvwprintw(win, py + 3, px, " █ ");
-    px += 3;
+    px += 7;
+    wrefresh(win);
   }
 };
 
@@ -162,29 +166,36 @@ int main(int argc, char **argv) {
   setlocale(LC_ALL, "");
   initscr();
   curs_set(0);
+  start_color();
+  noecho();
+  int screen_width, screen_height;
+  getmaxyx(stdscr, screen_height, screen_width);
+  int window_height, window_width;
+  window_height = 20;
+  window_width = screen_width / 3;
+  WINDOW *application_window =
+      newwin(window_height, window_width, 1, 2 * screen_width / 5);
   refresh();
-  // Define base time point
-  auto next_tick = std::chrono::steady_clock::now();
-  int height, width, start_y, start_x;
-  height = 100;
-  width = 200;
-  start_x = 5;
-  start_y = 2;
-
-  WINDOW *win = newwin(height, width, start_y, start_x);
-  for (int i = 10; i >= 1; i--) {
-    next_tick += std::chrono::seconds(1);
-    wclear(win);
-    IntLargeRep I1(win, start_y, start_x);
-    I1.int_printer(i);
-    wrefresh(win);
-    std::this_thread::sleep_until(next_tick);
+  init_pair(1, COLOR_RED, COLOR_BLACK);
+  wattron(application_window, COLOR_PAIR(1));
+  mvwprintw(application_window, 0, 0, "Pomodoro Timer");
+  wrefresh(application_window);
+  wattroff(application_window, COLOR_PAIR(1));
+  IntLargeRep timer_rep(application_window, 2, 0);
+  timer_rep.int_printer(20);
+  timer_rep.colon_printer();
+  timer_rep.int_printer(0);
+  mvwprintw(application_window, 8, 0, "s:start");
+  mvwprintw(application_window, 9, 0, "p:pause");
+  mvwprintw(application_window, 10, 0, "f:set focus duration");
+  mvwprintw(application_window, 11, 0, "b:set short break duration");
+  mvwprintw(application_window, 12, 0, "l:set long break duration");
+  mvwprintw(application_window, 13, 0, "q:quit");
+  wrefresh(application_window);
+  refresh();
+  char c = getch();
+  while (c != 'q') {
+    c = getch();
   }
-  next_tick += std::chrono::seconds(2);
-  wclear(win);
-  wrefresh(win);
-  printw("Surprise!!!! 10 seconds just passed. \n");
-  refresh();
-  std::this_thread::sleep_until(next_tick);
   endwin();
 }
