@@ -255,15 +255,6 @@ int main(int argc, char **argv) {
   wrefresh(application_window);
   wattroff(application_window, COLOR_PAIR(1));
 
-  // Menu Options Display
-  mvwprintw(application_window, 8, 0, "s:start");
-  mvwprintw(application_window, 9, 0, "p:pause");
-  mvwprintw(application_window, 10, 0, "f:set focus duration");
-  mvwprintw(application_window, 11, 0, "b:set short break duration");
-  mvwprintw(application_window, 12, 0, "l:set long break duration");
-  mvwprintw(application_window, 13, 0, "q:quit");
-  wrefresh(application_window);
-
   // removes non-blocking input(Input can be taken simulataneously while doing
   // something else)
   nodelay(stdscr, true);
@@ -278,12 +269,34 @@ int main(int argc, char **argv) {
   // Looped logic(continuos input)
   char c = getch();
   while (c != 'q' && c != 'Q') {
+
     auto time_tracker =
         std::chrono::steady_clock::now() + std::chrono::seconds(1);
     if ((c == 's' || c == 'S') && global_state == AppState::TimerPaused)
       global_state = AppState::TimerRunning;
     if ((c == 'p' || c == 'P') && global_state == AppState::TimerRunning)
       global_state = AppState::TimerPaused;
+
+    // Menu Options Display
+    switch (global_state) {
+    case AppState::TimerRunning:
+      mvwprintw(application_window, 8, 0, "p:pause              ");
+      mvwprintw(application_window, 9, 0, "q:quit               ");
+      mvwprintw(application_window, 10, 0, "                          ");
+      mvwprintw(application_window, 11, 0, "                         ");
+      mvwprintw(application_window, 12, 0, "      ");
+      break;
+    case AppState::TimerPaused:
+      mvwprintw(application_window, 8, 0, "s:start          ");
+      mvwprintw(application_window, 9, 0, "f:set focus duration");
+      mvwprintw(application_window, 10, 0, "b:set short break duration");
+      mvwprintw(application_window, 11, 0, "l:set long break duration");
+      mvwprintw(application_window, 12, 0, "q:quit");
+      break;
+    default:
+      break;
+    }
+    wrefresh(application_window);
     if (global_state == AppState::TimerRunning) {
       if (timer_duration_left > 0) {
         timer_duration_left--;
