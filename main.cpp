@@ -161,13 +161,83 @@ public:
     wrefresh(win);
   }
 };
+enum AppState {
+  TimerRunning,
+  TimerPaused,
+  EditDurationFocus,
+  EditDurationShortBreak,
+  EditDurationLongBreak
+};
 
+// Duration is in seconds
+void print_time(WINDOW *win, int sy, int sx, int duration) {
+  IntLargeRep timer_rep(win, sy, sx);
+  int min = duration / 60;
+  int sec = duration % 60;
+  timer_rep.int_printer(min);
+  timer_rep.colon_printer();
+  timer_rep.int_printer(sec);
+}
+
+// Notification sending fucntion
+void sendNotificationWithIcon(const std::string &title,
+                              const std::string &message,
+                              const std::string &iconPath) {
+#if defined(_WIN32)
+  // Windows: Loads the custom file path directly into the NotifyIcon object
+  // Requires an absolute path to a .ico file for best results
+  std::string cmd =
+      "powershell -Command \"[void] "
+      "[System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms'"
+      "); "
+      "$objNotifyIcon = New-Object System.Windows.Forms.NotifyIcon; "
+      "try { $objNotifyIcon.Icon = New-Object System.Drawing.Icon('" +
+      iconPath +
+      "') } "
+      "catch { $objNotifyIcon.Icon = "
+      "[System.Drawing.SystemIcons]::Information; } " // Fallback icon
+      "$objNotifyIcon.BalloonTipTitle = '" +
+      title +
+      "'; "
+      "$objNotifyIcon.BalloonTipText = '" +
+      message +
+      "'; "
+      "$objNotifyIcon.Visible = $True; "
+      "$objNotifyIcon.ShowBalloonTip(5000);\"";
+  std::system(cmd.c_str());
+
+#elif defined(__APPLE__)
+  // macOS: Bundles the notification with an 'app' icon wrapper
+  // Note: Standard AppleScript notification command doesn't allow random file
+  // paths easily, but you can point it to an installed Application icon (e.g.,
+  // "Terminal", "Finder")
+  std::string cmd = "osascript -e 'display notification \"" + message +
+                    "\" with title \"" + title + "\" sound name \"default\"'";
+  std::system(cmd.c_str());
+
+#elif defined(__linux__)
+  // Linux: The '-i' switch accepts absolute paths to .png, .jpg, or system icon
+  // names
+  std::string cmd = "notify-send -i \"" + iconPath + "\" \"" + title + "\" \"" +
+                    message + "\"";
+  std::system(cmd.c_str());
+#endif
+}
 int main(int argc, char **argv) {
+// Assets handling
+#if defined(_WIN32)
+  std::string myIcon =
+      "C:\\path\\to\\icon.ico"; // Windows strictly prefers .ico files
+#else
+  std::string myIcon =
+      "~/pomo_cli/icon.png"; // Linux/macOS work perfectly with .png
+#endif
   setlocale(LC_ALL, "");
   initscr();
   curs_set(0);
   start_color();
   noecho();
+  // Basic window Definition and  alignment
   int screen_width, screen_height;
   getmaxyx(stdscr, screen_height, screen_width);
   int window_height, window_width;
@@ -175,16 +245,17 @@ int main(int argc, char **argv) {
   window_width = screen_width / 3;
   WINDOW *application_window =
       newwin(window_height, window_width, 1, 2 * screen_width / 5);
+  WINDOW *timer_window = newwin(5, window_width, 3, 2 * screen_width / 5);
   refresh();
+
+  // Title Display
   init_pair(1, COLOR_RED, COLOR_BLACK);
   wattron(application_window, COLOR_PAIR(1));
   mvwprintw(application_window, 0, 0, "Pomodoro Timer");
   wrefresh(application_window);
   wattroff(application_window, COLOR_PAIR(1));
-  IntLargeRep timer_rep(application_window, 2, 0);
-  timer_rep.int_printer(20);
-  timer_rep.colon_printer();
-  timer_rep.int_printer(0);
+
+  // Menu Options Display
   mvwprintw(application_window, 8, 0, "s:start");
   mvwprintw(application_window, 9, 0, "p:pause");
   mvwprintw(application_window, 10, 0, "f:set focus duration");
@@ -192,10 +263,51 @@ int main(int argc, char **argv) {
   mvwprintw(application_window, 12, 0, "l:set long break duration");
   mvwprintw(application_window, 13, 0, "q:quit");
   wrefresh(application_window);
-  refresh();
+
+  // removes non-blocking input(Input can be taken simulataneously while doing
+  // something else)
+  nodelay(stdscr, true);
+  // State
+  AppState global_state = AppState::TimerPaused;
+  int dur_state = 0;
+  // Timer state
+  int focus_duration = 7;
+  int long_break_duration = 6;
+  int short_break_duration = 5;
+  int timer_duration_left = focus_duration;
+  // Looped logic(continuos input)
   char c = getch();
-  while (c != 'q') {
+  while (c != 'q' && c != 'Q') {
+    auto time_tracker =
+        std::chrono::steady_clock::now() + std::chrono::seconds(1);
+    if ((c == 's' || c == 'S') && global_state == AppState::TimerPaused)
+      global_state = AppState::TimerRunning;
+    if ((c == 'p' || c == 'P') && global_state == AppState::TimerRunning)
+      global_state = AppState::TimerPaused;
+    if (global_state == AppState::TimerRunning) {
+      if (timer_duration_left > 0) {
+        timer_duration_left--;
+        std::this_thread::sleep_until(time_tracker);
+      } else {
+        global_state = AppState::TimerPaused;
+        dur_state = (dur_state + 1) % 8;
+        if (dur_state == 7) {
+          timer_duration_left = long_break_duration;
+          sendNotificationWithIcon("Take a break", "Take a long break", myIcon);
+        } else if (dur_state % 2 == 0) {
+          timer_duration_left = focus_duration;
+          sendNotificationWithIcon("Break is over", "Get to work", myIcon);
+        } else {
+          timer_duration_left = short_break_duration;
+          sendNotificationWithIcon("Take a break", "Take a short break",
+                                   myIcon);
+        }
+      }
+      wclear(timer_window);
+    }
+    print_time(timer_window, 0, 0, timer_duration_left);
     c = getch();
   }
+
   endwin();
 }
