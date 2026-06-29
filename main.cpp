@@ -262,9 +262,9 @@ int main(int argc, char **argv) {
   AppState global_state = AppState::TimerPaused;
   int dur_state = 0;
   // Timer state
-  int focus_duration = 7;
-  int long_break_duration = 6;
-  int short_break_duration = 5;
+  int focus_duration = 25 * 60;
+  int long_break_duration = 15 * 60;
+  int short_break_duration = 5 * 60;
   int timer_duration_left = focus_duration;
   // Looped logic(continuos input)
   char c = getch();
@@ -374,6 +374,7 @@ int main(int argc, char **argv) {
         duration_val += c - '0';
         c = wgetch(application_window);
       }
+      duration_val *= 60;
       switch (global_state) {
       case AppState::EditDurationFocus:
         focus_duration = duration_val;

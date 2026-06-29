@@ -9,6 +9,8 @@ target_sources(pomo_cli
   main.cpp
 )
 target_link_libraries(pomo_cli PRIVATE ncurses)
+install(TARGETS pomo_cli
+        RUNTIME DESTINATION bin)
 #Libraries
 # add_library(circuit_network)
 # target_sources(circuit_network
