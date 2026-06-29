@@ -272,26 +272,72 @@ int main(int argc, char **argv) {
 
     auto time_tracker =
         std::chrono::steady_clock::now() + std::chrono::seconds(1);
-    if ((c == 's' || c == 'S') && global_state == AppState::TimerPaused)
-      global_state = AppState::TimerRunning;
     if ((c == 'p' || c == 'P') && global_state == AppState::TimerRunning)
       global_state = AppState::TimerPaused;
+    if (global_state == AppState::TimerPaused) {
+      switch (c) {
+      case 's':
+      case 'S':
+        global_state = AppState::TimerRunning;
+        break;
+      case 'f':
+      case 'F':
+        global_state = AppState::EditDurationFocus;
+        break;
+      case 'b':
+      case 'B':
+        global_state = AppState::EditDurationShortBreak;
+        break;
+      case 'l':
+      case 'L':
+        global_state = AppState::EditDurationLongBreak;
+        break;
+      default:
+        break;
+      }
+    }
 
     // Menu Options Display
     switch (global_state) {
     case AppState::TimerRunning:
-      mvwprintw(application_window, 8, 0, "p:pause              ");
+      mvwprintw(application_window, 8, 0,
+                "p:pause                              ");
       mvwprintw(application_window, 9, 0, "q:quit               ");
       mvwprintw(application_window, 10, 0, "                          ");
       mvwprintw(application_window, 11, 0, "                         ");
       mvwprintw(application_window, 12, 0, "      ");
       break;
     case AppState::TimerPaused:
-      mvwprintw(application_window, 8, 0, "s:start          ");
+      mvwprintw(application_window, 8, 0,
+                "s:start                                 ");
       mvwprintw(application_window, 9, 0, "f:set focus duration");
       mvwprintw(application_window, 10, 0, "b:set short break duration");
       mvwprintw(application_window, 11, 0, "l:set long break duration");
       mvwprintw(application_window, 12, 0, "q:quit");
+      break;
+    case AppState::EditDurationFocus:
+      mvwprintw(application_window, 8, 0,
+                "Enter duration(in minutes):              ");
+      mvwprintw(application_window, 9, 0, "                     ");
+      mvwprintw(application_window, 10, 0, "                          ");
+      mvwprintw(application_window, 11, 0, "                         ");
+      mvwprintw(application_window, 12, 0, "      ");
+      break;
+    case AppState::EditDurationShortBreak:
+      mvwprintw(application_window, 8, 0,
+                "Enter duration(in minutes):              ");
+      mvwprintw(application_window, 9, 0, "                     ");
+      mvwprintw(application_window, 10, 0, "                          ");
+      mvwprintw(application_window, 11, 0, "                         ");
+      mvwprintw(application_window, 12, 0, "      ");
+      break;
+    case AppState::EditDurationLongBreak:
+      mvwprintw(application_window, 8, 0,
+                "Enter duration(in minutes):              ");
+      mvwprintw(application_window, 9, 0, "                     ");
+      mvwprintw(application_window, 10, 0, "                          ");
+      mvwprintw(application_window, 11, 0, "                         ");
+      mvwprintw(application_window, 12, 0, "      ");
       break;
     default:
       break;
@@ -315,6 +361,40 @@ int main(int argc, char **argv) {
           sendNotificationWithIcon("Take a break", "Take a short break",
                                    myIcon);
         }
+      }
+      wclear(timer_window);
+    } else if (global_state != AppState::TimerPaused) {
+      echo();
+      wmove(application_window, 8, 29);
+      wrefresh(application_window);
+      char c = wgetch(application_window);
+      int duration_val = 0;
+      while (c != '\n') {
+        duration_val *= 10;
+        duration_val += c - '0';
+        c = wgetch(application_window);
+      }
+      switch (global_state) {
+      case AppState::EditDurationFocus:
+        focus_duration = duration_val;
+        break;
+      case AppState::EditDurationLongBreak:
+        long_break_duration = duration_val;
+        break;
+      case AppState::EditDurationShortBreak:
+        short_break_duration = duration_val;
+        break;
+      default:
+        break;
+      }
+      noecho();
+      global_state = AppState::TimerPaused;
+      if (dur_state == 7) {
+        timer_duration_left = long_break_duration;
+      } else if (dur_state % 2 == 0) {
+        timer_duration_left = focus_duration;
+      } else {
+        timer_duration_left = short_break_duration;
       }
       wclear(timer_window);
     }
