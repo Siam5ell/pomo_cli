@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <chrono>
 #include <ncurses.h>
 #include <thread>
@@ -154,10 +155,10 @@ public:
   }
   std::pair<int, int> nextline() { return {sy + 5, sx}; }
   void colon_printer() {
-    mvwprintw(win, py + 1, px, " █ ");
-    mvwprintw(win, py + 2, px, "   ");
-    mvwprintw(win, py + 3, px, " █ ");
-    px += 7;
+    mvwprintw(win, py + 1, px, "█");
+    mvwprintw(win, py + 2, px, " ");
+    mvwprintw(win, py + 3, px, "█");
+    px += 5;
     wrefresh(win);
   }
 };
@@ -240,12 +241,13 @@ int main(int argc, char **argv) {
   // Basic window Definition and  alignment
   int screen_width, screen_height;
   getmaxyx(stdscr, screen_height, screen_width);
-  int window_height, window_width;
+  int window_height, window_width, window_start;
   window_height = 20;
-  window_width = screen_width / 3;
+  window_width = std::max((screen_width / 3), 35);
+  window_start = (screen_width - window_width) / 2;
   WINDOW *application_window =
-      newwin(window_height, window_width, 1, screen_width / 5);
-  WINDOW *timer_window = newwin(5, window_width, 3, screen_width / 5);
+      newwin(window_height, window_width, 1, window_start);
+  WINDOW *timer_window = newwin(5, window_width, 3, window_start);
   refresh();
 
   // Title Display
