@@ -244,8 +244,8 @@ int main(int argc, char **argv) {
   window_height = 20;
   window_width = screen_width / 3;
   WINDOW *application_window =
-      newwin(window_height, window_width, 1, 2 * screen_width / 5);
-  WINDOW *timer_window = newwin(5, window_width, 3, 2 * screen_width / 5);
+      newwin(window_height, window_width, 1, screen_width / 5);
+  WINDOW *timer_window = newwin(5, window_width, 3, screen_width / 5);
   refresh();
 
   // Title Display
